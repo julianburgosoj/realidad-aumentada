@@ -2,56 +2,116 @@
 <html lang="es">
   <head>
     <meta charset="UTF-8" />
-    <title>AR Modelo 3D Interactivo</title>
+    <title>Escáner AR - Modelo 3D</title>
+
+    <!-- Librerías necesarias -->
     <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-aframe.prod.js"></script>
+
     <style>
-      body, html {
+      /* ======== ESTILOS GENERALES ======== */
+      html, body {
         margin: 0;
+        padding: 0;
+        height: 100%;
         overflow: hidden;
+        font-family: 'Poppins', sans-serif;
+        background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+        color: white;
+      }
+
+      /* Contenedor principal */
+      #ar-container {
         width: 100%;
         height: 100%;
-        background-color: black;
+        display: none; /* Oculto hasta que se inicie */
       }
-      #ar-container {
-        width: 100vw;
-        height: 100vh;
+
+      /* Pantalla inicial */
+      #inicio {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+      }
+
+      #inicio h1 {
+        font-size: 2rem;
+        font-weight: 600;
+        margin-bottom: 20px;
+        text-shadow: 0 0 10px #00c9ff;
+      }
+
+      #btnIniciar {
+        background: linear-gradient(45deg, #00c9ff, #92fe9d);
+        border: none;
+        padding: 15px 40px;
+        border-radius: 30px;
+        color: #111;
+        font-size: 1.2rem;
+        font-weight: bold;
+        cursor: pointer;
+        box-shadow: 0 0 15px rgba(0, 201, 255, 0.6);
+        transition: transform 0.2s, box-shadow 0.3s;
+      }
+
+      #btnIniciar:hover {
+        transform: scale(1.05);
+        box-shadow: 0 0 25px rgba(0, 201, 255, 0.9);
+      }
+
+      #btnIniciar:active {
+        transform: scale(0.98);
       }
     </style>
   </head>
 
   <body>
+    <!-- ======== PANTALLA DE INICIO ======== -->
+    <div id="inicio">
+      <h1>✨ Escanea tu diseño</h1>
+      <p>Toca el botón para activar la cámara y ver tu modelo en realidad aumentada</p>
+      <button id="btnIniciar">📷 Escanear diseño</button>
+    </div>
+
+    <!-- ======== ESCENA AR ======== -->
     <div id="ar-container">
       <a-scene
         mindar-image="imageTargetSrc: targets.mind;"
         color-space="sRGB"
         renderer="colorManagement: true, physicallyCorrectLights"
         vr-mode-ui="enabled: false"
-        device-orientation-permission-ui="enabled: true"
+        device-orientation-permission-ui="enabled: false"
       >
+        <!-- Cargar recursos -->
         <a-assets>
-          <a-asset-item id="carModel" src="model.glb"></a-asset-item>
+          <a-asset-item id="modelo" src="model.glb"></a-asset-item>
         </a-assets>
 
+        <!-- Cámara -->
         <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
+        <!-- Modelo 3D sobre el target -->
         <a-entity mindar-image-target="targetIndex: 0">
           <a-gltf-model
-            id="car"
-            src="#carModel"
+            src="#modelo"
             position="0 0 0"
             rotation="0 0 0"
-            scale="0.2 0.2 0.2"
+            scale="0.3 0.3 0.3"
             gesture-handler
           ></a-gltf-model>
         </a-entity>
       </a-scene>
     </div>
 
-    <!-- 🎮 Rotación con el dedo o mouse -->
+    <!-- ======== INTERACCIÓN DEL MODELO ======== -->
     <script>
+      // Componente para rotar el modelo con el dedo o mouse
       AFRAME.registerComponent("gesture-handler", {
-        schema: { enabled: { default: true } },
         init: function () {
           this.isDragging = false;
           this.previousX = 0;
@@ -61,6 +121,7 @@
           canvas.addEventListener("mousedown", (e) => this.startDrag(e));
           canvas.addEventListener("mouseup", () => this.endDrag());
           canvas.addEventListener("mousemove", (e) => this.handleRotation(e));
+
           canvas.addEventListener("touchstart", (e) => this.startDrag(e.touches[0]));
           canvas.addEventListener("touchend", () => this.endDrag());
           canvas.addEventListener("touchmove", (e) => this.handleRotation(e.touches[0]));
@@ -80,9 +141,16 @@
           this.el.setAttribute("rotation", this.rotation);
         },
       });
+
+      // Mostrar escena AR al presionar el botón
+      document.querySelector("#btnIniciar").addEventListener("click", () => {
+        document.querySelector("#inicio").style.display = "none";
+        document.querySelector("#ar-container").style.display = "block";
+      });
     </script>
   </body>
 </html>
+
 
 
 
