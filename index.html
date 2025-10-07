@@ -2,14 +2,24 @@
 <html lang="es">
   <head>
     <meta charset="UTF-8" />
-    <title>AR Demo</title>
+    <title>AR Interactivo</title>
     <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-aframe.prod.js"></script>
     <style>
-      body, html { margin: 0; overflow: hidden; }
-      #ar-container { width: 100vw; height: 100vh; }
+      body, html {
+        margin: 0;
+        overflow: hidden;
+        width: 100%;
+        height: 100%;
+        background-color: black;
+      }
+      #ar-container {
+        width: 100vw;
+        height: 100vh;
+      }
     </style>
   </head>
+
   <body>
     <div id="ar-container">
       <a-scene
@@ -20,22 +30,111 @@
         device-orientation-permission-ui="enabled: true"
       >
         <a-assets>
+          <!-- 🎥 Video -->
+          <video
+            id="myVideo"
+            src="video.mp4"
+            preload="auto"
+            playsinline
+            webkit-playsinline
+            crossorigin="anonymous"
+          ></video>
+
+          <!-- 🚗 Modelo 3D -->
           <a-asset-item id="carModel" src="model.glb"></a-asset-item>
         </a-assets>
 
         <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
+        <!-- ===================================== -->
+        <!-- 🎥 OPCIÓN 1: Mostrar VIDEO en AR -->
+        <!-- ===================================== -->
+        <!-- 
+        <a-entity mindar-image-target="targetIndex: 0">
+          <a-video
+            src="#myVideo"
+            width="1"
+            height="0.6"
+            position="0 0 0"
+            rotation="0 0 0"
+            autoplay="false"
+            loop="true"
+          ></a-video>
+        </a-entity>
+        -->
+
+        <!-- ===================================== -->
+        <!-- 🚗 OPCIÓN 2: Mostrar MODELO 3D en AR -->
+        <!-- ===================================== -->
         <a-entity mindar-image-target="targetIndex: 0">
           <a-gltf-model
+            id="car"
             src="#carModel"
             position="0 0 0"
             rotation="0 0 0"
             scale="0.2 0.2 0.2"
+            gesture-handler
           ></a-gltf-model>
         </a-entity>
       </a-scene>
     </div>
+
+    <!-- ======================== -->
+    <!-- 🎮 Script de Interacción -->
+    <!-- ======================== -->
+    <script>
+      // Reproduce o pausa el video cuando se detecta el target
+      document.addEventListener("DOMContentLoaded", () => {
+        const sceneEl = document.querySelector("a-scene");
+        const videoEl = document.querySelector("#myVideo");
+
+        sceneEl.addEventListener("targetFound", () => {
+          console.log("Target detectado 🎯");
+          videoEl.play();
+        });
+
+        sceneEl.addEventListener("targetLost", () => {
+          console.log("Target perdido 🚫");
+          videoEl.pause();
+        });
+      });
+
+      // 🔄 Permitir girar el modelo 3D con el dedo o mouse
+      AFRAME.registerComponent("gesture-handler", {
+        schema: {
+          enabled: { default: true },
+        },
+        init: function () {
+          this.handleRotation = this.handleRotation.bind(this);
+          this.isDragging = false;
+          this.previousX = 0;
+          this.rotation = { x: 0, y: 0 };
+          this.el.sceneEl.canvas.addEventListener("mousedown", (e) => this.startDrag(e));
+          this.el.sceneEl.canvas.addEventListener("mouseup", () => this.endDrag());
+          this.el.sceneEl.canvas.addEventListener("mousemove", (e) => this.handleRotation(e));
+          this.el.sceneEl.canvas.addEventListener("touchstart", (e) => this.startDrag(e.touches[0]));
+          this.el.sceneEl.canvas.addEventListener("touchend", () => this.endDrag());
+          this.el.sceneEl.canvas.addEventListener("touchmove", (e) => this.handleRotation(e.touches[0]));
+        },
+        startDrag: function (e) {
+          this.isDragging = true;
+          this.previousX = e.clientX;
+        },
+        endDrag: function () {
+          this.isDragging = false;
+        },
+        handleRotation: function (e) {
+          if (!this.isDragging) return;
+          const deltaX = e.clientX - this.previousX;
+          this.previousX = e.clientX;
+          this.rotation.y -= deltaX * 0.5;
+          this.el.setAttribute("rotation", this.rotation);
+        },
+      });
+    </script>
   </body>
 </html>
+
+
 
 
