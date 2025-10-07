@@ -1,0 +1,76 @@
+/* Estilos Generales */
+body {
+    margin: 0;
+    overflow: hidden; /* Oculta barras de desplazamiento innecesarias */
+    font-family: 'Inter', sans-serif;
+    /* Fondo oscuro, si el overlay no está activo */
+    background-color: #1f2937;
+}
+
+/* Contenedor principal del panel */
+#control-panel {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 90%;
+    max-width: 450px;
+    background-color: white;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+    border-radius: 12px;
+    z-index: 100; /* Asegura que esté encima de la escena AR */
+    backdrop-filter: blur(5px);
+}
+
+/* Estilo para inputs de archivo (más agradable) */
+.file-input {
+    width: 100%;
+    padding: 10px;
+    border: 2px solid #e5e7eb;
+    border-radius: 8px;
+    background-color: #f9fafb;
+    transition: border-color 0.2s;
+}
+
+.file-input:focus {
+    outline: none;
+    border-color: #4f46e5;
+}
+
+/* Mensajes de Estado */
+#status-message {
+    min-height: 20px;
+    padding: 5px;
+    border-radius: 6px;
+}
+
+/* Ocultar la escena si el panel está visible, aunque A-Frame ya gestiona el canvas */
+#ar-scene {
+    width: 100vw;
+    height: 100vh;
+    display: block;
+}
+
+/* Estilo para los radio buttons */
+input[type="radio"] {
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border: 2px solid #9ca3af;
+    border-radius: 50%;
+    transition: all 0.2s;
+    cursor: pointer;
+}
+
+input[type="radio"]:checked {
+    background-color: #4f46e5;
+    border-color: #4f46e5;
+    box-shadow: 0 0 0 4px #e0e7ff;
+}
+
+/* Estilos de responsividad para botones y panel */
+@media (max-width: 600px) {
+    #control-panel {
+        width: 95%;
+    }
+}
