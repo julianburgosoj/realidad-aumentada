@@ -55,13 +55,15 @@
         -->
         <a-entity mindar-image-target="targetIndex: 0" id="ar-target">
             
-            <!-- OPCIÓN A: Mostrar Modelo 3D (Descomenta esto) -->
-            <a-gltf-model rotation="90 0 0" position="0 0 0.1" scale="0.5 0.5 0.5" src="#modelAsset">
+            <!-- OPCIÓN A: Mostrar Modelo 3D 
+                 Agregamos visible="false" para que NO se muestre hasta que el target sea detectado.
+            -->
+            <a-gltf-model rotation="90 0 0" position="0 0 0.1" scale="0.5 0.5 0.5" src="#modelAsset" visible="false">
             </a-gltf-model>
 
             <!-- OPCIÓN B: Mostrar Video/GIF (Comenta el modelo 3D y Descomenta esto) -->
             <!-- 
-            <a-video src="#videoAsset" width="1" height="0.6" position="0 0 0.1" rotation="0 0 0">
+            <a-video src="#videoAsset" width="1" height="0.6" position="0 0 0.1" rotation="0 0 0" visible="false">
             </a-video> 
             -->
             
@@ -92,3 +94,4 @@
     <script src="script.js"></script>
 </body>
 </html>
+
