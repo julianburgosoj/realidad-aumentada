@@ -1,159 +1,41 @@
 <!DOCTYPE html>
 <html lang="es">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0"/>
-  <title>AR Interactivo - Modelo o Video</title>
-  <style>
-    html, body {
-      margin: 0;
-      height: 100%;
-      overflow: hidden;
-      background: #000;
-      font-family: Arial, sans-serif;
-    }
-    #ar-container {
-      width: 100vw;
-      height: 100vh;
-      position: relative;
-    }
-    #start-btn {
-      position: absolute;
-      top: 15px;
-      left: 50%;
-      transform: translateX(-50%);
-      z-index: 10;
-      padding: 10px 20px;
-      background: #fff;
-      border-radius: 8px;
-      border: none;
-      font-weight: bold;
-      cursor: pointer;
-    }
-    #status {
-      position: absolute;
-      bottom: 10px;
-      left: 50%;
-      transform: translateX(-50%);
-      color: white;
-      z-index: 10;
-      background: rgba(0,0,0,0.5);
-      padding: 5px 10px;
-      border-radius: 8px;
-    }
-  </style>
-</head>
-<body>
-  <div id="ar-container">
-    <button id="start-btn">Iniciar AR</button>
-    <div id="status">Esperando inicio...</div>
-  </div>
+  <head>
+    <meta charset="UTF-8" />
+    <title>AR Demo</title>
+    <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-aframe.prod.js"></script>
+    <style>
+      body, html { margin: 0; overflow: hidden; }
+      #ar-container { width: 100vw; height: 100vh; }
+    </style>
+  </head>
+  <body>
+    <div id="ar-container">
+      <a-scene
+        mindar-image="imageTargetSrc: targets.mind;"
+        color-space="sRGB"
+        renderer="colorManagement: true, physicallyCorrectLights"
+        vr-mode-ui="enabled: false"
+        device-orientation-permission-ui="enabled: true"
+      >
+        <a-assets>
+          <a-asset-item id="carModel" src="model.glb"></a-asset-item>
+        </a-assets>
 
-  <!-- Librerías -->
-  <script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
-  <script src="https://unpkg.com/three@0.160.0/examples/js/loaders/GLTFLoader.js"></script>
-  <script src="https://unpkg.com/mind-ar@1.1.8/dist/mindar-image-three.prod.js"></script>
+        <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
-  <script>
-    const button = document.getElementById("start-btn");
-    const status = document.getElementById("status");
-
-    button.addEventListener("click", async () => {
-      button.style.display = "none";
-      status.innerText = "Cargando configuración...";
-
-      // 🔹 Leer archivo config.json para saber qué mostrar
-      const config = await fetch("./config.json").then(res => res.json());
-      const contentType = config.content; // "video" o "model"
-      console.log("Tipo de contenido:", contentType);
-
-      status.innerText = "Iniciando cámara...";
-
-      // Inicializa MindAR
-      const mindarThree = new window.MINDAR.IMAGE.MindARThree({
-        container: document.querySelector("#ar-container"),
-        imageTargetSrc: "./targets.mind",
-        maxTrack: 1
-      });
-
-      const {renderer, scene, camera} = mindarThree;
-      const anchor = mindarThree.addAnchor(0);
-
-      const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1);
-      scene.add(light);
-
-      // -------------------------------
-      // 🔸 CONTENIDO: MODELO 3D
-      // -------------------------------
-      let model;
-      if (contentType === "model") {
-        const loader = new THREE.GLTFLoader();
-        loader.load("./model.glb", (gltf) => {
-          model = gltf.scene;
-          model.scale.set(0.5, 0.5, 0.5);
-          model.rotation.y = Math.PI;
-          model.visible = false;
-          anchor.group.add(model);
-          status.innerText = "Modelo 3D cargado. Escanea la imagen.";
-        }, undefined, (err) => {
-          console.error("Error al cargar el modelo:", err);
-          status.innerText = "Error al cargar el modelo.";
-        });
-      }
-
-      // -------------------------------
-      // 🔸 CONTENIDO: VIDEO
-      // -------------------------------
-      let video, videoPlane;
-      if (contentType === "video") {
-        video = document.createElement("video");
-        video.src = "./video.mp4";
-        video.loop = true;
-        video.muted = false;
-        video.crossOrigin = "anonymous";
-        video.playsInline = true;
-        video.preload = "auto";
-        document.body.appendChild(video);
-
-        const texture = new THREE.VideoTexture(video);
-        const geometry = new THREE.PlaneGeometry(1.2, 0.7);
-        const material = new THREE.MeshBasicMaterial({map: texture, side: THREE.DoubleSide});
-        videoPlane = new THREE.Mesh(geometry, material);
-        videoPlane.visible = false;
-        anchor.group.add(videoPlane);
-        status.innerText = "Video preparado. Escanea la imagen.";
-      }
-
-      // Eventos del target
-      anchor.onTargetFound = () => {
-        status.innerText = "🎯 Imagen detectada";
-
-        if (contentType === "model" && model) {
-          model.visible = true;
-        }
-
-        if (contentType === "video" && videoPlane) {
-          videoPlane.visible = true;
-          video.play().catch(e => console.warn("Autoplay bloqueado:", e));
-        }
-      };
-
-      anchor.onTargetLost = () => {
-        status.innerText = "🔍 Buscando imagen...";
-        if (contentType === "model" && model) {
-          model.visible = false;
-        }
-        if (contentType === "video" && videoPlane) {
-          videoPlane.visible = false;
-          video.pause();
-        }
-      };
-
-      await mindarThree.start();
-      renderer.setAnimationLoop(() => {
-        renderer.render(scene, camera);
-      });
-    });
-  </script>
-</body>
+        <a-entity mindar-image-target="targetIndex: 0">
+          <a-gltf-model
+            src="#carModel"
+            position="0 0 0"
+            rotation="0 0 0"
+            scale="0.2 0.2 0.2"
+          ></a-gltf-model>
+        </a-entity>
+      </a-scene>
+    </div>
+  </body>
 </html>
+
+
