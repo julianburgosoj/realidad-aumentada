@@ -1,148 +1,169 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
-  <head>
-    <meta charset="UTF-8" />
-    <title>Escáner AR interactivo</title>
+<head>
+  <meta charset="utf-8" />
+  <title>AR - Modelo 3D (fondo cámara en vivo)</title>
 
-    <!-- ✅ Librería de MindAR y A-Frame -->
-    <script src="https://cdn.jsdelivr.net/npm/aframe@1.5.0/dist/aframe.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.4/dist/mindar-image-aframe.prod.js"></script>
+  <!-- THREE + GLTFLoader -->
+  <script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
+  <script src="https://unpkg.com/three@0.160.0/examples/js/loaders/GLTFLoader.js"></script>
 
-    <!-- ✅ Estilos de interfaz -->
-    <style>
-      body {
-        margin: 0;
-        overflow: hidden;
-        background-color: black;
-        font-family: 'Poppins', sans-serif;
-      }
+  <!-- MindAR (Three integration) -->
+  <script src="https://unpkg.com/mind-ar@1.1.8/dist/mindar-image-three.prod.js"></script>
 
-      /* Contenedor del botón inicial */
-      #pantalla-inicial {
-        position: absolute;
-        width: 100%;
-        height: 100%;
-        background: radial-gradient(circle at center, #222, #000);
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        flex-direction: column;
-        z-index: 10;
-        color: white;
-        text-align: center;
-      }
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0" />
 
-      #btn-escanear {
-        background-color: #00aaff;
-        border: none;
-        padding: 15px 35px;
-        border-radius: 30px;
-        color: white;
-        font-size: 18px;
-        cursor: pointer;
-        transition: 0.3s;
-      }
+  <style>
+    html,body { height:100%; margin:0; background:#000; font-family: Inter, Arial, sans-serif; }
+    /* Pantalla inicial */
+    #inicio {
+      position: absolute; inset:0;
+      display:flex; align-items:center; justify-content:center; flex-direction:column;
+      gap:12px; z-index: 40; color:#fff;
+      background: linear-gradient(180deg, rgba(0,0,0,0.55), rgba(0,0,0,0.55));
+    }
+    #btnIniciar {
+      padding:12px 28px; border-radius:28px; border:none; font-weight:700; cursor:pointer;
+      background: linear-gradient(90deg,#00d4ff,#4de0b2); color:#022; box-shadow: 0 10px 30px rgba(0,212,255,0.14);
+    }
+    #status {
+      position: absolute; left:12px; bottom:12px; z-index:50;
+      background: rgba(0,0,0,0.45); color: #fff; padding:8px 10px; border-radius:10px; font-size:13px;
+      backdrop-filter: blur(4px);
+    }
+    /* Contenedor donde MindAR renderiza (canvas) */
+    #ar-container {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+      display: none; /* activamos después del click */
+      touch-action: none; /* evita scroll al tocar */
+    }
 
-      #btn-escanear:hover {
-        background-color: #0088cc;
-      }
+    /* Forzar que canvas WebGL sea transparente (para ver el video en vivo detrás) */
+    #ar-container canvas { background: transparent !important; }
+  </style>
+</head>
+<body>
+  <div id="inicio" aria-hidden="false">
+    <h1>✨ Escanea tu diseño</h1>
+    <p>Toca el botón para activar la cámara y ver el modelo en AR</p>
+    <button id="btnIniciar">📷 Escanear diseño</button>
+  </div>
 
-      /* Escena de AR */
-      #escena-ar {
-        width: 100%;
-        height: 100%;
-        display: none; /* Se activa solo después de oprimir el botón */
-      }
+  <div id="ar-container" aria-hidden="true"></div>
 
-      /* Asegura que la cámara esté visible en vivo detrás del modelo */
-      a-scene {
-        position: fixed;
-        top: 0;
-        left: 0;
-        z-index: 1;
-      }
-    </style>
-  </head>
+  <div id="status">Esperando inicio...</div>
 
-  <body>
-    <!-- 🟣 Pantalla inicial -->
-    <div id="pantalla-inicial">
-      <h1>✨ Escáner de Diseño AR ✨</h1>
-      <p>Toca el botón para activar la cámara y ver tu modelo en realidad aumentada</p>
-      <button id="btn-escanear">Escanear diseño</button>
-    </div>
+<script>
+  // Referencias UI
+  const btn = document.getElementById('btnIniciar');
+  const inicio = document.getElementById('inicio');
+  const arContainer = document.getElementById('ar-container');
+  const status = document.getElementById('status');
 
-    <!-- 🟢 Escena de Realidad Aumentada -->
-    <a-scene
-      id="escena-ar"
-      mindar-image="imageTargetSrc: ./targets.mind;"
-      vr-mode-ui="enabled: false"
-      device-orientation-permission-ui="enabled: false"
-      embedded
-      renderer="colorManagement: true, physicallyCorrectLights: true"
-    >
-      <!-- Cámara AR -->
-      <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+  // Evita múltiples inicios
+  let iniciado = false;
+  btn.addEventListener('click', async () => {
+    if (iniciado) return;
+    iniciado = true;
+    status.innerText = 'Solicitando cámara...';
+    // ocultar inicio, mostrar contenedor AR
+    inicio.style.display = 'none';
+    arContainer.style.display = 'block';
+    arContainer.setAttribute('aria-hidden','false');
 
-      <!-- Contenedor del modelo -->
-      <a-entity mindar-image-target="targetIndex: 0">
-        <!-- Modelo 3D interactivo -->
-        <a-gltf-model
-          src="./model.glb"
-          rotation="0 180 0"
-          scale="0.5 0.5 0.5"
-          gesture-handler
-        ></a-gltf-model>
-      </a-entity>
-    </a-scene>
-
-    <!-- 🧠 Script para activar AR solo al oprimir el botón -->
-    <script>
-      const btn = document.getElementById("btn-escanear");
-      const pantallaInicial = document.getElementById("pantalla-inicial");
-      const escenaAR = document.getElementById("escena-ar");
-
-      btn.addEventListener("click", () => {
-        pantallaInicial.style.display = "none"; // Oculta pantalla de inicio
-        escenaAR.style.display = "block"; // Muestra la escena AR
+    try {
+      // Crear instancia MindAR + Three
+      const mindarThree = new window.MINDAR.IMAGE.MindARThree({
+        container: arContainer,
+        imageTargetSrc: './targets.mind',
+        maxTrack: 1,
       });
-    </script>
 
-    <!-- ✋ Script para permitir rotar el modelo con los dedos -->
-    <script>
-      AFRAME.registerComponent("gesture-handler", {
-        init: function () {
-          this.isDragging = false;
-          this.previousX = 0;
+      const { renderer, scene, camera } = mindarThree;
 
-          this.el.sceneEl.canvas.addEventListener("touchstart", (e) => {
-            this.isDragging = true;
-            this.previousX = e.touches[0].clientX;
-          });
+      // IMPORTANTE: hacemos el canvas transparente para que se vea el video detrás
+      // (algunas versiones lo hacen automáticamente; por seguridad lo forzamos)
+      renderer.setClearColor(0x000000, 0); // alfa = 0 => transparente
 
-          this.el.sceneEl.canvas.addEventListener("touchmove", (e) => {
-            if (!this.isDragging) return;
-            const deltaX = e.touches[0].clientX - this.previousX;
-            this.previousX = e.touches[0].clientX;
-            this.el.object3D.rotation.y += deltaX * 0.01; // rotación suave
-          });
+      // Luz básica
+      const hLight = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1.0);
+      scene.add(hLight);
+      const dLight = new THREE.DirectionalLight(0xffffff, 0.6);
+      dLight.position.set(0, 1, 1);
+      scene.add(dLight);
 
-          this.el.sceneEl.canvas.addEventListener("touchend", () => {
-            this.isDragging = false;
-          });
+      // Grupo anclado al target (índice 0)
+      const anchor = mindarThree.addAnchor(0);
+
+      // Cargar GLTF
+      const loader = new THREE.GLTFLoader();
+      let modelo = null;
+      loader.load('./model.glb',
+        (gltf) => {
+          modelo = gltf.scene;
+          // Ajusta escala/posición según tu modelo
+          modelo.scale.set(0.25, 0.25, 0.25);
+          modelo.rotation.set(0, Math.PI, 0);
+          modelo.visible = false; // lo mostramos solo cuando target esté visible
+          anchor.group.add(modelo);
+          status.innerText = 'Modelo cargado. Apunta al diseño.';
         },
+        (xhr) => {
+          // progreso opcional
+          // console.log( (xhr.loaded / xhr.total * 100) + '% cargado' );
+        },
+        (err) => {
+          console.error('Error cargando model.glb:', err);
+          status.innerText = 'Error cargando el modelo (mira la consola).';
+        }
+      );
+
+      // Rotación táctil / pointer sobre el canvas
+      const canvas = renderer.domElement;
+      canvas.style.touchAction = 'none';
+      let isDown = false, lastX = 0;
+      canvas.addEventListener('pointerdown', (e) => { isDown = true; lastX = e.clientX; });
+      canvas.addEventListener('pointermove', (e) => {
+        if (!isDown || !modelo) return;
+        const dx = e.clientX - lastX; lastX = e.clientX;
+        modelo.rotation.y += dx * 0.01; // sensibilidad
       });
-    </script>
-  </body>
+      canvas.addEventListener('pointerup', () => { isDown = false; });
+      canvas.addEventListener('pointercancel', () => { isDown = false; });
+
+      // Eventos target
+      anchor.onTargetFound = () => {
+        if (modelo) modelo.visible = true;
+        status.innerText = '🎯 Diseño detectado';
+      };
+      anchor.onTargetLost = () => {
+        if (modelo) modelo.visible = false;
+        status.innerText = '🔍 Buscando diseño...';
+      };
+
+      // Start MindAR (esto pide permiso de cámara)
+      await mindarThree.start();
+
+      // Render loop
+      renderer.setAnimationLoop(() => {
+        renderer.render(scene, camera);
+      });
+
+      // Si llegamos bien acá:
+      status.innerText = 'AR activo — apunta al diseño';
+    } catch (err) {
+      console.error('Fallo al iniciar AR:', err);
+      status.innerText = 'No se pudo activar la cámara. Revisa permisos o protocolo.';
+      // mostrar de nuevo el inicio para que el usuario lo reintente
+      inicio.style.display = 'flex';
+      arContainer.style.display = 'none';
+      iniciado = false;
+    }
+  });
+</script>
+</body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
