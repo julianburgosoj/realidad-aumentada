@@ -2,7 +2,7 @@
 <html lang="es">
   <head>
     <meta charset="UTF-8" />
-    <title>AR Interactivo</title>
+    <title>AR Modelo 3D Interactivo</title>
     <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-aframe.prod.js"></script>
     <style>
@@ -30,42 +30,11 @@
         device-orientation-permission-ui="enabled: true"
       >
         <a-assets>
-          <!-- 🎥 Video -->
-          <video
-            id="myVideo"
-            src="video.mp4"
-            preload="auto"
-            playsinline
-            webkit-playsinline
-            crossorigin="anonymous"
-          ></video>
-
-          <!-- 🚗 Modelo 3D -->
           <a-asset-item id="carModel" src="model.glb"></a-asset-item>
         </a-assets>
 
         <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
-        <!-- ===================================== -->
-        <!-- 🎥 OPCIÓN 1: Mostrar VIDEO en AR -->
-        <!-- ===================================== -->
-        <!-- 
-        <a-entity mindar-image-target="targetIndex: 0">
-          <a-video
-            src="#myVideo"
-            width="1"
-            height="0.6"
-            position="0 0 0"
-            rotation="0 0 0"
-            autoplay="false"
-            loop="true"
-          ></a-video>
-        </a-entity>
-        -->
-
-        <!-- ===================================== -->
-        <!-- 🚗 OPCIÓN 2: Mostrar MODELO 3D en AR -->
-        <!-- ===================================== -->
         <a-entity mindar-image-target="targetIndex: 0">
           <a-gltf-model
             id="car"
@@ -79,42 +48,22 @@
       </a-scene>
     </div>
 
-    <!-- ======================== -->
-    <!-- 🎮 Script de Interacción -->
-    <!-- ======================== -->
+    <!-- 🎮 Rotación con el dedo o mouse -->
     <script>
-      // Reproduce o pausa el video cuando se detecta el target
-      document.addEventListener("DOMContentLoaded", () => {
-        const sceneEl = document.querySelector("a-scene");
-        const videoEl = document.querySelector("#myVideo");
-
-        sceneEl.addEventListener("targetFound", () => {
-          console.log("Target detectado 🎯");
-          videoEl.play();
-        });
-
-        sceneEl.addEventListener("targetLost", () => {
-          console.log("Target perdido 🚫");
-          videoEl.pause();
-        });
-      });
-
-      // 🔄 Permitir girar el modelo 3D con el dedo o mouse
       AFRAME.registerComponent("gesture-handler", {
-        schema: {
-          enabled: { default: true },
-        },
+        schema: { enabled: { default: true } },
         init: function () {
-          this.handleRotation = this.handleRotation.bind(this);
           this.isDragging = false;
           this.previousX = 0;
           this.rotation = { x: 0, y: 0 };
-          this.el.sceneEl.canvas.addEventListener("mousedown", (e) => this.startDrag(e));
-          this.el.sceneEl.canvas.addEventListener("mouseup", () => this.endDrag());
-          this.el.sceneEl.canvas.addEventListener("mousemove", (e) => this.handleRotation(e));
-          this.el.sceneEl.canvas.addEventListener("touchstart", (e) => this.startDrag(e.touches[0]));
-          this.el.sceneEl.canvas.addEventListener("touchend", () => this.endDrag());
-          this.el.sceneEl.canvas.addEventListener("touchmove", (e) => this.handleRotation(e.touches[0]));
+          const canvas = this.el.sceneEl.canvas;
+
+          canvas.addEventListener("mousedown", (e) => this.startDrag(e));
+          canvas.addEventListener("mouseup", () => this.endDrag());
+          canvas.addEventListener("mousemove", (e) => this.handleRotation(e));
+          canvas.addEventListener("touchstart", (e) => this.startDrag(e.touches[0]));
+          canvas.addEventListener("touchend", () => this.endDrag());
+          canvas.addEventListener("touchmove", (e) => this.handleRotation(e.touches[0]));
         },
         startDrag: function (e) {
           this.isDragging = true;
@@ -134,6 +83,7 @@
     </script>
   </body>
 </html>
+
 
 
 
