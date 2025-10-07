@@ -1,274 +1,142 @@
 <!DOCTYPE html>
 <html lang="es">
-<head>
-  <meta charset="utf-8" />
-  <title>AR - Escanear Diseño (Modelo 3D activado por botón)</title>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Escáner AR interactivo</title>
 
-  <!-- AFRAME y MindAR (CDN) -->
-  <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-aframe.prod.js"></script>
+    <!-- ✅ Librería de MindAR y A-Frame -->
+    <script src="https://cdn.jsdelivr.net/npm/aframe@1.5.0/dist/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.4/dist/mindar-image-aframe.prod.js"></script>
 
-  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0" />
-
-  <style>
-    /* ===== Estilos generales (interfaz atractiva) ===== */
-    html, body {
-      margin: 0;
-      padding: 0;
-      height: 100%;
-      overflow: hidden;
-      font-family: 'Inter', system-ui, sans-serif;
-      background: linear-gradient(135deg,#0f1724 0%, #0b3d91 50%, #0b2b5a 100%);
-      color: #fff;
-    }
-
-    /* Pantalla de inicio centrada */
-    #inicio {
-      position: absolute;
-      inset: 0;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 18px;
-      text-align: center;
-      padding: 24px;
-      z-index: 5;
-    }
-    #inicio h1 {
-      margin: 0;
-      font-size: 28px;
-      letter-spacing: 0.2px;
-      text-shadow: 0 6px 24px rgba(0,0,0,0.6);
-    }
-    #inicio p {
-      margin: 0;
-      opacity: 0.9;
-    }
-
-    /* Botón principal */
-    #btnEscanear {
-      background: linear-gradient(90deg,#00d4ff 0%, #5efce8 100%);
-      color: #052023;
-      padding: 14px 34px;
-      border-radius: 28px;
-      border: none;
-      font-weight: 700;
-      font-size: 16px;
-      cursor: pointer;
-      box-shadow: 0 10px 30px rgba(0, 212, 255, 0.18);
-      transition: transform .14s ease, box-shadow .14s ease;
-    }
-    #btnEscanear:active { transform: translateY(1px) scale(.997); }
-    #btnEscanear:hover { transform: scale(1.03); }
-
-    /* Contenedor donde se inyectará la escena AR */
-    #ar-wrapper {
-      width: 100vw;
-      height: 100vh;
-      display: none; /* se muestra solo después de picar el botón */
-    }
-
-    /* Mensaje pequeño en la esquina inferior */
-    #hint {
-      position: absolute;
-      bottom: 18px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: rgba(0,0,0,0.3);
-      padding: 8px 12px;
-      border-radius: 12px;
-      font-size: 13px;
-      z-index: 6;
-      backdrop-filter: blur(4px);
-    }
-  </style>
-</head>
-
-<body>
-  <!-- ===== Pantalla inicial (visual) ===== -->
-  <div id="inicio" aria-hidden="false">
-    <h1>📌 Escanea tu diseño</h1>
-    <p>Mantén tu diseño impreso o en pantalla. Toca el botón para activar la cámara y ver el modelo 3D.</p>
-    <button id="btnEscanear" type="button">📷 Escanear diseño</button>
-    <div style="opacity:.85; font-size:13px; margin-top:6px;">
-      Recomendación: usa Chrome (Android) o Safari (iOS). Permite la cámara cuando el navegador lo pida.
-    </div>
-  </div>
-
-  <!-- ===== Aquí se inyectará la escena A-Frame / MindAR solo al presionar el botón ===== -->
-  <div id="ar-wrapper" aria-hidden="true"></div>
-
-  <!-- ===== Componente gesture-handler: registra antes de crear la escena ===== -->
-  <script>
-    /**
-     * Componente A-Frame para rotar el modelo 3D con el dedo o mouse.
-     * Se asegura de esperar hasta que el canvas de A-Frame esté disponible.
-     * (Registrado globalmente para que funcione en la escena que se inyecta dinámicamente).
-     */
-    (function(){
-      // Espera a que AFRAME exista
-      function ensureAframe(fn) {
-        if (window.AFRAME) return fn();
-        const t = setInterval(()=> {
-          if (window.AFRAME) {
-            clearInterval(t);
-            fn();
-          }
-        }, 50);
+    <!-- ✅ Estilos de interfaz -->
+    <style>
+      body {
+        margin: 0;
+        overflow: hidden;
+        background-color: black;
+        font-family: 'Poppins', sans-serif;
       }
 
-      ensureAframe(() => {
-        AFRAME.registerComponent('gesture-handler', {
-          schema: { enabled: { default: true } },
-          init: function () {
-            this.isDragging = false;
-            this.previousX = 0;
-            this.rotationY = 0;
-            this.elRotation = { x:0, y:0, z:0 };
+      /* Contenedor del botón inicial */
+      #pantalla-inicial {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        background: radial-gradient(circle at center, #222, #000);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        flex-direction: column;
+        z-index: 10;
+        color: white;
+        text-align: center;
+      }
 
-            // Como el canvas puede no estar disponible inmediatamente, hacemos polling
-            const checkCanvas = setInterval(() => {
-              const scene = this.el.sceneEl;
-              if (!scene) return;
-              const canvas = scene.canvas;
-              if (!canvas) return;
-              clearInterval(checkCanvas);
-              // Agregamos eventos pointer (útil para mouse y touch)
-              canvas.style.touchAction = "none"; // evitar scroll al arrastrar
-              canvas.addEventListener('pointerdown', this.onPointerDown.bind(this));
-              canvas.addEventListener('pointerup',   this.onPointerUp.bind(this));
-              canvas.addEventListener('pointercancel', this.onPointerUp.bind(this));
-              canvas.addEventListener('pointermove', this.onPointerMove.bind(this));
-            }, 80);
-          },
+      #btn-escanear {
+        background-color: #00aaff;
+        border: none;
+        padding: 15px 35px;
+        border-radius: 30px;
+        color: white;
+        font-size: 18px;
+        cursor: pointer;
+        transition: 0.3s;
+      }
 
-          onPointerDown: function (evt) {
+      #btn-escanear:hover {
+        background-color: #0088cc;
+      }
+
+      /* Escena de AR */
+      #escena-ar {
+        width: 100%;
+        height: 100%;
+        display: none; /* Se activa solo después de oprimir el botón */
+      }
+
+      /* Asegura que la cámara esté visible en vivo detrás del modelo */
+      a-scene {
+        position: fixed;
+        top: 0;
+        left: 0;
+        z-index: 1;
+      }
+    </style>
+  </head>
+
+  <body>
+    <!-- 🟣 Pantalla inicial -->
+    <div id="pantalla-inicial">
+      <h1>✨ Escáner de Diseño AR ✨</h1>
+      <p>Toca el botón para activar la cámara y ver tu modelo en realidad aumentada</p>
+      <button id="btn-escanear">Escanear diseño</button>
+    </div>
+
+    <!-- 🟢 Escena de Realidad Aumentada -->
+    <a-scene
+      id="escena-ar"
+      mindar-image="imageTargetSrc: ./targets.mind;"
+      vr-mode-ui="enabled: false"
+      device-orientation-permission-ui="enabled: false"
+      embedded
+      renderer="colorManagement: true, physicallyCorrectLights: true"
+    >
+      <!-- Cámara AR -->
+      <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+
+      <!-- Contenedor del modelo -->
+      <a-entity mindar-image-target="targetIndex: 0">
+        <!-- Modelo 3D interactivo -->
+        <a-gltf-model
+          src="./model.glb"
+          rotation="0 180 0"
+          scale="0.5 0.5 0.5"
+          gesture-handler
+        ></a-gltf-model>
+      </a-entity>
+    </a-scene>
+
+    <!-- 🧠 Script para activar AR solo al oprimir el botón -->
+    <script>
+      const btn = document.getElementById("btn-escanear");
+      const pantallaInicial = document.getElementById("pantalla-inicial");
+      const escenaAR = document.getElementById("escena-ar");
+
+      btn.addEventListener("click", () => {
+        pantallaInicial.style.display = "none"; // Oculta pantalla de inicio
+        escenaAR.style.display = "block"; // Muestra la escena AR
+      });
+    </script>
+
+    <!-- ✋ Script para permitir rotar el modelo con los dedos -->
+    <script>
+      AFRAME.registerComponent("gesture-handler", {
+        init: function () {
+          this.isDragging = false;
+          this.previousX = 0;
+
+          this.el.sceneEl.canvas.addEventListener("touchstart", (e) => {
             this.isDragging = true;
-            this.previousX = evt.clientX;
-            // prevenir que el sistema haga otras cosas
-            evt.preventDefault();
-          },
+            this.previousX = e.touches[0].clientX;
+          });
 
-          onPointerUp: function (evt) {
-            this.isDragging = false;
-          },
-
-          onPointerMove: function (evt) {
+          this.el.sceneEl.canvas.addEventListener("touchmove", (e) => {
             if (!this.isDragging) return;
-            const deltaX = evt.clientX - this.previousX;
-            this.previousX = evt.clientX;
-            // ajustar sensibilidad
-            const sens = 0.35;
-            this.rotationY -= deltaX * sens;
-            // Aplicar rotación al elemento (x,y,z)
-            // Mantener x=0 y z=0 por simplicidad
-            this.el.setAttribute('rotation', { x: 0, y: this.rotationY, z: 0 });
-          }
-        });
-      });
-    })();
-  </script>
-
-  <!-- ===== Script que crea la escena A-Frame / MindAR solo al tocar el botón ===== -->
-  <script>
-    (function(){
-      const btn = document.getElementById('btnEscanear');
-      const inicio = document.getElementById('inicio');
-      const arWrapper = document.getElementById('ar-wrapper');
-      const hint = document.createElement('div');
-      hint.id = 'hint';
-      hint.innerText = 'Apunta con la cámara a tu diseño';
-      document.body.appendChild(hint);
-      hint.style.display = 'none';
-
-      // Evitar múltiples clicks
-      let iniciada = false;
-
-      btn.addEventListener('click', async () => {
-        if (iniciada) return;
-        iniciada = true;
-
-        // Ocultar la pantalla de inicio y mostrar el contenedor AR
-        inicio.style.display = 'none';
-        arWrapper.style.display = 'block';
-        arWrapper.setAttribute('aria-hidden', 'false');
-        hint.style.display = 'block';
-
-        // Insertamos la escena A-Frame (dinámicamente)
-        // Nota: al crear la escena ahora, la petición de cámara ocurrirá después del click
-        const sceneHTML = `
-<a-scene
-  id="arScene"
-  embedded
-  mindar-image="imageTargetSrc: targets.mind;"
-  color-space="sRGB"
-  renderer="colorManagement: true, physicallyCorrectLights"
-  vr-mode-ui="enabled: false"
-  device-orientation-permission-ui="enabled: false"
->
-  <a-assets>
-    <!-- Asegúrate de que model.glb esté en la misma carpeta -->
-    <a-asset-item id="modelo" src="model.glb"></a-asset-item>
-  </a-assets>
-
-  <!-- Cámara (sin controles de movimiento de usuario) -->
-  <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
-
-  <!-- Target: aquí se monta el modelo al detectar la imagen -->
-  <a-entity mindar-image-target="targetIndex: 0" id="targetEntity">
-    <a-gltf-model
-      id="modelo3d"
-      src="#modelo"
-      position="0 0 0"
-      rotation="0 180 0"
-      scale="0.25 0.25 0.25"
-      gesture-handler
-    ></a-gltf-model>
-  </a-entity>
-</a-scene>
-        `;
-        arWrapper.innerHTML = sceneHTML;
-
-        // Esperar a que la escena A-Frame esté lista
-        const sceneEl = document.getElementById('arScene');
-
-        // Se dispara cuando la escena termina de cargar assets y render está listo
-        sceneEl.addEventListener('loaded', () => {
-          console.log('Escena AR cargada (loaded).');
-        });
-
-        // Cuando el target aparece o desaparece podemos mostrar mensajes o ejecutar lógica
-        // Obtenemos la entidad que tiene mindar-image-target
-        // NOTA: algunas versiones emiten el evento 'targetFound' sobre la entidad del target
-        // Esperamos un poco para que la entidad exista
-        const waitTarget = setInterval(() => {
-          const targetEnt = sceneEl.querySelector('#targetEntity');
-          if (!targetEnt) return;
-          clearInterval(waitTarget);
-
-          // targetFound -> visible
-          targetEnt.addEventListener('targetFound', () => {
-            console.log('🎯 Target encontrado');
-            hint.innerText = 'Target detectado ✔️';
-            // aquí se puede ejecutar animación o sonido si quieres
+            const deltaX = e.touches[0].clientX - this.previousX;
+            this.previousX = e.touches[0].clientX;
+            this.el.object3D.rotation.y += deltaX * 0.01; // rotación suave
           });
 
-          // targetLost -> oculto
-          targetEnt.addEventListener('targetLost', () => {
-            console.log('🔍 Target perdido');
-            hint.innerText = 'Apunta con la cámara a tu diseño';
+          this.el.sceneEl.canvas.addEventListener("touchend", () => {
+            this.isDragging = false;
           });
-        }, 80);
-
-        // Si quieres forzar scroll a top (mejora visual)
-        window.scrollTo(0,0);
+        },
       });
-
-    })();
-  </script>
-</body>
+    </script>
+  </body>
 </html>
+
+
 
 
 
